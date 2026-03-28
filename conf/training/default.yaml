@@ -1,0 +1,18 @@
+# Default training config (full production run)
+n_steps: 500
+learning_rate: 0.01
+n_samples: 1024
+n_chains: 1
+n_discard_per_chain: 16
+
+# SR optimizer
+sr:
+  diag_shift: 0.01
+  holomorphic: true
+
+# Callbacks
+log_every: 10
+checkpoint_every: 100
+early_stop_variance: 1.0e-6
+early_stop_patience: 50
+early_stop_min_steps: 100

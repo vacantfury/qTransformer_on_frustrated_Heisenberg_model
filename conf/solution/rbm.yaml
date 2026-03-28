@@ -1,0 +1,5 @@
+# RBM baseline
+name: rbm
+type: rbm
+alpha: 1
+use_visible_bias: true

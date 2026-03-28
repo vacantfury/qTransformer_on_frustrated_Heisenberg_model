@@ -1,0 +1,5 @@
+# Default evaluation settings
+# Metrics to compute after each experiment
+energy_relative_error: true
+entanglement_entropy: true
+convergence_history: true

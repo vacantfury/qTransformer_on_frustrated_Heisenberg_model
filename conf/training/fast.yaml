@@ -1,0 +1,16 @@
+# Fast training config (for debugging and quick tests)
+n_steps: 50
+learning_rate: 0.01
+n_samples: 256
+n_chains: 1
+n_discard_per_chain: 8
+
+sr:
+  diag_shift: 0.01
+  holomorphic: true
+
+log_every: 5
+checkpoint_every: 25
+early_stop_variance: 1.0e-6
+early_stop_patience: 10
+early_stop_min_steps: 20

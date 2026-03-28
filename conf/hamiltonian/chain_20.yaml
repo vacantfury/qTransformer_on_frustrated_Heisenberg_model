@@ -1,0 +1,8 @@
+name: chain_20
+geometry: chain
+L: 20
+Lx: null
+Ly: null
+J1: 1.0
+g: 0.0
+pbc: true

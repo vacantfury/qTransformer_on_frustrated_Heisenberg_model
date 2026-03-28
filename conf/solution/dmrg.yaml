@@ -1,0 +1,6 @@
+# DMRG
+name: dmrg
+type: dmrg
+chi_max: 256
+n_sweeps: 20
+mixer: true

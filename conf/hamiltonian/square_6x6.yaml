@@ -1,0 +1,8 @@
+name: square_6x6
+geometry: square
+L: null
+Lx: 6
+Ly: 6
+J1: 1.0
+g: 0.0
+pbc: true

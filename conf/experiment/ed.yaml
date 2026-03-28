@@ -1,0 +1,27 @@
+# ============================================================
+# ED ground truth — exact diagonalisation on all small systems
+# ============================================================
+# Usage:
+#   python main.py --batch --experiment ed
+#   sbatch scripts/run_experiment.sbatch ed
+# ============================================================
+
+tasks:
+  - solution: ed
+    hamiltonian: square_4x4
+    g: 0.0
+  - solution: ed
+    hamiltonian: square_4x4
+    g: 0.3
+  - solution: ed
+    hamiltonian: square_4x4
+    g: 0.5
+  - solution: ed
+    hamiltonian: square_4x4
+    g: 0.7
+  - solution: ed
+    hamiltonian: chain_20
+    g: 0.0
+  - solution: ed
+    hamiltonian: chain_20
+    g: 0.5

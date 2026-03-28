@@ -1,0 +1,90 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# MyPy
+.mypy_cache/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Local config
+*.local
+
+
+
+
+# Project-specific
+.cursorignore
+human_and_llm_agent_interaction/
+human_and_agent_interaction
+scripts/
+literature/
+logs/
+test/
+private_files/
+paper/
+backup_codes/
+test.py
+poetry.lock
+TODO.md
+proposal.md
+project_structure.md
+
+# Hydra
+multirun/
+outputs/
+
+# MLflow
+mlruns/
+mlartifacts/
+
+# Data — ignore large dataset files, keep directory structure
+data/original_datasets/
+data/processed_datasets/

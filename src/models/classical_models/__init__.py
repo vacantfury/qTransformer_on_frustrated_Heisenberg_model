@@ -1,0 +1,1 @@
+"""Classical NQS baseline models."""

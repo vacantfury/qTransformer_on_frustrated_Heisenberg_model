@@ -1,0 +1,15 @@
+# Single-task config for Hydra
+#
+# Usage:
+#   python main.py solution=rbm hamiltonian=square_4x4
+#   python main.py --batch --experiment test
+#   python main.py --batch --experiment benchmark
+
+defaults:
+  - solution: rbm
+  - hamiltonian: square_4x4
+  - training: default
+  - evaluation: default
+  - _self_
+
+mode: vmc

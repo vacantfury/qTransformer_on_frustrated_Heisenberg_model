@@ -1,0 +1,7 @@
+# Simplified ViT (position-only attention, no Q/K)
+name: simplified_vit
+type: simplified_vit
+d_model: 64
+n_heads: 4
+n_layers: 2
+d_ff: 128

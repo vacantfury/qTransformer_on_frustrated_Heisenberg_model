@@ -1,0 +1,6 @@
+# CNN + ResNet
+name: cnn_resnet
+type: cnn_resnet
+features: 32
+n_res_blocks: 4
+kernel_size: 3

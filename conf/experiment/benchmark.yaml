@@ -1,0 +1,88 @@
+# ============================================================
+# Full benchmark — all solutions × all g values on 4×4
+# ============================================================
+# Usage:
+#   python main.py --batch --experiment benchmark
+#   sbatch scripts/run_experiment.sbatch benchmark
+# ============================================================
+
+tasks:
+  # --- g = 0.0 (unfrustrated Heisenberg) ---
+  - solution: rbm
+    hamiltonian: square_4x4
+    g: 0.0
+  - solution: cnn_resnet
+    hamiltonian: square_4x4
+    g: 0.0
+  - solution: classical_vit
+    hamiltonian: square_4x4
+    g: 0.0
+  - solution: simplified_vit
+    hamiltonian: square_4x4
+    g: 0.0
+  - solution: qsann
+    hamiltonian: square_4x4
+    g: 0.0
+  - solution: qmsan
+    hamiltonian: square_4x4
+    g: 0.0
+
+  # --- g = 0.3 (moderate frustration) ---
+  - solution: rbm
+    hamiltonian: square_4x4
+    g: 0.3
+  - solution: cnn_resnet
+    hamiltonian: square_4x4
+    g: 0.3
+  - solution: classical_vit
+    hamiltonian: square_4x4
+    g: 0.3
+  - solution: simplified_vit
+    hamiltonian: square_4x4
+    g: 0.3
+  - solution: qsann
+    hamiltonian: square_4x4
+    g: 0.3
+  - solution: qmsan
+    hamiltonian: square_4x4
+    g: 0.3
+
+  # --- g = 0.5 (critical frustration) ---
+  - solution: rbm
+    hamiltonian: square_4x4
+    g: 0.5
+  - solution: cnn_resnet
+    hamiltonian: square_4x4
+    g: 0.5
+  - solution: classical_vit
+    hamiltonian: square_4x4
+    g: 0.5
+  - solution: simplified_vit
+    hamiltonian: square_4x4
+    g: 0.5
+  - solution: qsann
+    hamiltonian: square_4x4
+    g: 0.5
+  - solution: qmsan
+    hamiltonian: square_4x4
+    g: 0.5
+
+  # --- g = 0.7 (strong frustration) ---
+  - solution: rbm
+    hamiltonian: square_4x4
+    g: 0.7
+  - solution: cnn_resnet
+    hamiltonian: square_4x4
+    g: 0.7
+  - solution: classical_vit
+    hamiltonian: square_4x4
+    g: 0.7
+  - solution: simplified_vit
+    hamiltonian: square_4x4
+    g: 0.7
+  - solution: qsann
+    hamiltonian: square_4x4
+    g: 0.7
+  - solution: qmsan
+    hamiltonian: square_4x4
+    g: 0.7

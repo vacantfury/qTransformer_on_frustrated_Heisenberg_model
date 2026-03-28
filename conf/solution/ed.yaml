@@ -1,0 +1,3 @@
+# ED (exact diagonalisation — no model, just solver)
+name: ed
+type: ed

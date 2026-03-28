@@ -1,0 +1,9 @@
+# Quick test — 2 tasks: ED + fast RBM VMC on 4×4
+tasks:
+  - solution: ed
+    hamiltonian: square_4x4
+    g: 0.0
+  - solution: rbm
+    hamiltonian: square_4x4
+    g: 0.0
+    training: fast

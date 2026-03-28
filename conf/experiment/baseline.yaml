@@ -1,0 +1,46 @@
+# ============================================================
+# Classical baselines — all classical solutions on 4×4, g sweep
+# ============================================================
+# Usage:
+#   python main.py --batch --experiment baseline
+#   sbatch scripts/run_experiment.sbatch baseline
+# ============================================================
+
+tasks:
+  # --- RBM ---
+  - solution: rbm
+    hamiltonian: square_4x4
+    g: 0.0
+  - solution: rbm
+    hamiltonian: square_4x4
+    g: 0.3
+  - solution: rbm
+    hamiltonian: square_4x4
+    g: 0.5
+  - solution: rbm
+    hamiltonian: square_4x4
+    g: 0.7
+
+  # --- CNN+ResNet ---
+  - solution: cnn_resnet
+    hamiltonian: square_4x4
+    g: 0.0
+  - solution: cnn_resnet
+    hamiltonian: square_4x4
+    g: 0.5
+
+  # --- Classical ViT ---
+  - solution: classical_vit
+    hamiltonian: square_4x4
+    g: 0.0
+  - solution: classical_vit
+    hamiltonian: square_4x4
+    g: 0.5
+
+  # --- Simplified ViT ---
+  - solution: simplified_vit
+    hamiltonian: square_4x4
+    g: 0.0
+  - solution: simplified_vit
+    hamiltonian: square_4x4
+    g: 0.5

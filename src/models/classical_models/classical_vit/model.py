@@ -34,12 +34,12 @@ class ClassicalViT(BaseModel):
     dtype: type = complex
 
     @nn.compact
-    def __call__(self, x: jnp.ndarray) -> jnp.ndarray:
-        """x ∈ {+1,-1}^N → log ψ(x) ∈ ℂ"""
-        N = x.shape[0]
+    def forward(self, x: jnp.ndarray) -> jnp.ndarray:
+        """x: (batch, N) → (batch, 1)"""
+        N = x.shape[-1]
 
-        # Per-site embedding: (N,) → (N, d_model)
-        x = x.reshape(N, 1).astype(self.dtype)
+        # Per-site embedding: (batch, N) → (batch, N, d_model)
+        x = x[..., jnp.newaxis].astype(self.dtype)  # (batch, N, 1)
         x = nn.Dense(self.d_model, dtype=self.dtype, name="site_embed")(x)
 
         # Learnable positional encoding
@@ -48,7 +48,7 @@ class ClassicalViT(BaseModel):
             nn.initializers.normal(stddev=0.02),
             (N, self.d_model),
         )
-        x = x + pos_embed.astype(self.dtype)
+        x = x + pos_embed.astype(self.dtype)  # broadcasts over batch
 
         # Transformer encoder stack
         for i in range(self.n_layers):
@@ -63,8 +63,6 @@ class ClassicalViT(BaseModel):
         # Final LayerNorm
         x = nn.LayerNorm(dtype=self.dtype)(x)
 
-        # Global average pooling → log ψ
-        x = jnp.mean(x, axis=0)  # (d_model,)
-        log_psi = nn.Dense(1, dtype=self.dtype, name="output")(x)
-
-        return log_psi.squeeze(-1)
+        # Global average pooling over sites → (batch, d_model)
+        x = jnp.mean(x, axis=-2)
+        return nn.Dense(1, dtype=self.dtype, name="output")(x)  # (batch, 1)

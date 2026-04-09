@@ -1,0 +1,8 @@
+name: chain_10
+geometry: chain
+L: 10
+Lx: null
+Ly: null
+J1: 1.0
+g: 0.0
+pbc: true

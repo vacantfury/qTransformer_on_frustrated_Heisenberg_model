@@ -4,10 +4,10 @@ learning_rate: 0.01
 n_samples: 256
 n_chains: 1
 n_discard_per_chain: 8
+d_max: 1
 
 sr:
   diag_shift: 0.01
-  holomorphic: true
 
 log_every: 5
 checkpoint_every: 25

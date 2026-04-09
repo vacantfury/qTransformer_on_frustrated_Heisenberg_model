@@ -1,15 +1,13 @@
-# Single-task config for Hydra
+# Base config for Hydra compose API
 #
-# Usage:
-#   python main.py solution=rbm hamiltonian=square_4x4
-#   python main.py --batch --experiment test
-#   python main.py --batch --experiment benchmark
+# Each task resolves this with overrides like:
+#   solution=rbm, hamiltonian=chain_10, training=medium
+#
+# The defaults below are used when no override is specified.
 
 defaults:
   - solution: rbm
-  - hamiltonian: square_4x4
+  - hamiltonian: chain_10
   - training: default
   - evaluation: default
   - _self_
-
-mode: vmc

@@ -1,86 +1,70 @@
 """
 Task runner for qTransformer experiments.
 Dispatches to appropriate solver based on solution type.
+
+Receives Hydra DictConfig with typed dot access:
+    config.solution.type, config.training.n_steps, etc.
 """
 from __future__ import annotations
 
-import logging
 from pathlib import Path
 from typing import Any
 
-from src.paths import OUTPUTS_DIR
+import mlflow
+from omegaconf import OmegaConf, DictConfig
+
+from src.paths import OUTPUTS_DIR, MLRUNS_DIR
 from src.utils.experiment import create_experiment_dir
+from src.utils.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
+# Set MLflow to use local file store — must be set before any mlflow calls
+mlflow.set_tracking_uri(f"file://{MLRUNS_DIR}")
 
-def _build_hamiltonian(ham_cfg: dict):
-    """Build NetKet Hamiltonian from resolved config."""
-    geometry = ham_cfg["geometry"]
+def _build_hamiltonian(ham_cfg: DictConfig):
+    """Build NetKet Hamiltonian and graph from resolved config."""
+    import netket as nk
+
+    geometry = ham_cfg.geometry
     g = ham_cfg.get("g", 0.0)
     J1 = ham_cfg.get("J1", 1.0)
     J2 = g * J1
+    pbc = ham_cfg.get("pbc", True)
 
     if geometry == "chain":
         from src.hamiltonians.j1j2_chain import build_netket_hamiltonian, hamiltonian_id
-        L = ham_cfg["L"]
-        hilbert, H = build_netket_hamiltonian(L=L, J1=J1, J2=J2, pbc=ham_cfg.get("pbc", True))
-        return hilbert, H, hamiltonian_id(L, g), L
+        from src.hamiltonians.lattice_utils import chain_neighbours
+        L = ham_cfg.L
+        hilbert, H = build_netket_hamiltonian(L=L, J1=J1, J2=J2, pbc=pbc)
+        nn, nnn = chain_neighbours(L, pbc=pbc)
+        edges = nn + nnn
+        graph = nk.graph.Graph(edges=edges)
+        return hilbert, H, graph, hamiltonian_id(L, g), L
     elif geometry == "square":
         from src.hamiltonians.j1j2_square import build_netket_hamiltonian, hamiltonian_id
-        Lx, Ly = ham_cfg["Lx"], ham_cfg["Ly"]
-        hilbert, H = build_netket_hamiltonian(Lx=Lx, Ly=Ly, J1=J1, J2=J2, pbc=ham_cfg.get("pbc", True))
-        return hilbert, H, hamiltonian_id(Lx, Ly, g), Lx * Ly
+        from src.hamiltonians.lattice_utils import square_neighbours
+        Lx, Ly = ham_cfg.Lx, ham_cfg.Ly
+        hilbert, H = build_netket_hamiltonian(Lx=Lx, Ly=Ly, J1=J1, J2=J2, pbc=pbc)
+        nn, nnn = square_neighbours(Lx, Ly, pbc=pbc)
+        edges = nn + nnn
+        graph = nk.graph.Graph(edges=edges)
+        return hilbert, H, graph, hamiltonian_id(Lx, Ly, g), Lx * Ly
     else:
         raise ValueError(f"Unknown geometry: {geometry}")
 
 
-def _build_model(sol_cfg: dict):
+def _build_model(sol_cfg: DictConfig):
     """Instantiate an NQS model from solution config."""
-    sol_type = sol_cfg["type"]
-
-    if sol_type == "rbm":
-        from src.models.classical_models.rbm.model import RBM
-        return RBM(alpha=sol_cfg.get("alpha", 1))
-    elif sol_type == "cnn_resnet":
-        from src.models.classical_models.cnn_resnet.model import CNNResNet
-        return CNNResNet(
-            features=sol_cfg.get("features", 32),
-            n_res_blocks=sol_cfg.get("n_res_blocks", 4),
-        )
-    elif sol_type == "classical_vit":
-        from src.models.classical_models.classical_vit.model import ClassicalViT
-        return ClassicalViT(
-            d_model=sol_cfg.get("d_model", 64),
-            n_heads=sol_cfg.get("n_heads", 4),
-            n_layers=sol_cfg.get("n_layers", 2),
-        )
-    elif sol_type == "simplified_vit":
-        from src.models.classical_models.simplified_vit.model import SimplifiedViT
-        return SimplifiedViT(
-            d_model=sol_cfg.get("d_model", 64),
-            n_heads=sol_cfg.get("n_heads", 4),
-            n_layers=sol_cfg.get("n_layers", 2),
-        )
-    elif sol_type == "qsann":
-        from src.models.quantum_models.qsann.model import QSANN
-        return QSANN(
-            n_qubits_per_token=sol_cfg.get("n_qubits_per_token", 4),
-            n_pqc_layers=sol_cfg.get("n_pqc_layers", 2),
-        )
-    elif sol_type == "qmsan":
-        from src.models.quantum_models.qmsan.model import QMSAN
-        return QMSAN(
-            n_qubits_per_token=sol_cfg.get("n_qubits_per_token", 4),
-            n_pqc_layers=sol_cfg.get("n_pqc_layers", 2),
-        )
-    else:
-        raise ValueError(f"Unknown solution type: {sol_type}")
+    from src.models.factory import create_model
+    # Factory expects a dict-like object — DictConfig supports dict access
+    return create_model(sol_cfg)
 
 
-def _get_ed_reference(ham_cfg: dict) -> float | None:
+
+def _get_ed_reference(ham_cfg: DictConfig) -> float | None:
     """Get ED ground-state energy if system is small enough."""
-    geometry = ham_cfg["geometry"]
+    geometry = ham_cfg.geometry
     N = ham_cfg.get("L", 0) if geometry == "chain" else ham_cfg.get("Lx", 0) * ham_cfg.get("Ly", 0)
     if N > 20:
         logger.info(f"System too large for ED ({N} sites), skipping.")
@@ -99,31 +83,31 @@ def _get_ed_reference(ham_cfg: dict) -> float | None:
         return None
 
 
-def _ham_id(ham_cfg: dict) -> str:
+def _ham_id(ham_cfg: DictConfig) -> str:
     """Generate a human-readable Hamiltonian identifier."""
-    geometry = ham_cfg["geometry"]
+    geometry = ham_cfg.geometry
     g = ham_cfg.get("g", 0.0)
     if geometry == "chain":
-        return f"chain_{ham_cfg['L']}_g{g:.1f}"
+        return f"chain_{ham_cfg.L}_g{g:.1f}"
     else:
-        return f"square_{ham_cfg['Lx']}x{ham_cfg['Ly']}_g{g:.1f}"
+        return f"square_{ham_cfg.Lx}x{ham_cfg.Ly}_g{g:.1f}"
 
 
-def run_task(config: dict[str, Any]) -> dict[str, Any]:
+def run_task(config: DictConfig) -> dict[str, Any]:
     """
     Run a single task based on the solution type.
 
     Args:
-        config: Resolved config dict with 'solution', 'hamiltonian',
-                'training', 'evaluation' sub-dicts.
+        config: Hydra-resolved DictConfig with solution, hamiltonian,
+                training, evaluation sub-configs.
 
     Returns:
         Dict with results including energy and experiment_dir.
     """
-    sol_cfg = config["solution"]
-    ham_cfg = config["hamiltonian"]
-    sol_type = sol_cfg["type"]
-    sol_name = sol_cfg["name"]
+    sol_cfg = config.solution
+    ham_cfg = config.hamiltonian
+    sol_type = sol_cfg.type
+    sol_name = sol_cfg.name
 
     logger.info(f"Running task: solution={sol_name}, type={sol_type}")
 
@@ -135,87 +119,170 @@ def run_task(config: dict[str, Any]) -> dict[str, Any]:
         return _run_vmc(config)
 
 
-def _run_ed(config: dict) -> dict:
+# ==================== MLflow helpers ====================
+
+def _mlflow_experiment_name(ham_cfg: DictConfig) -> str:
+    """Consistent MLflow experiment name per Hamiltonian system."""
+    return _ham_id(ham_cfg)
+
+
+def _mlflow_common_params(config: DictConfig) -> dict:
+    """Common parameters logged for ALL task types."""
+    ham_cfg = config.hamiltonian
+    sol_cfg = config.solution
+    geometry = ham_cfg.geometry
+    N = ham_cfg.get("L", 0) if geometry == "chain" else ham_cfg.get("Lx", 0) * ham_cfg.get("Ly", 0)
+    return {
+        "solution": sol_cfg.name,
+        "method": sol_cfg.type,
+        "geometry": geometry,
+        "g": ham_cfg.get("g", 0.0),
+        "N": N,
+    }
+
+
+# ==================== Task runners ====================
+
+def _run_ed(config: DictConfig) -> dict:
     """Run exact diagonalisation."""
     from src.numerical_solvers.ed.solver import run_and_save
 
-    ham_cfg = config["hamiltonian"]
-    hid = _ham_id(ham_cfg)
-    experiment_dir = create_experiment_dir(OUTPUTS_DIR, hamiltonian=hid, method="ed")
+    ham_cfg = config.hamiltonian
+    experiment_dir = create_experiment_dir(OUTPUTS_DIR, method="ed")
     logger.info(f"Running ED → {experiment_dir}")
 
-    E0, psi0 = run_and_save(
-        experiment_dir=experiment_dir,
-        geometry=ham_cfg["geometry"], J1=ham_cfg.get("J1", 1.0), g=ham_cfg.get("g", 0.0),
-        pbc=ham_cfg.get("pbc", True),
-        L=ham_cfg.get("L"), Lx=ham_cfg.get("Lx"), Ly=ham_cfg.get("Ly"),
-    )
-    geometry = ham_cfg["geometry"]
-    N = ham_cfg.get("L") if geometry == "chain" else ham_cfg["Lx"] * ham_cfg["Ly"]
+    # Convert DictConfig to plain dict for saving in results.json
+    task_config_dict = OmegaConf.to_container(config, resolve=True)
+
+    mlflow.set_experiment(_mlflow_experiment_name(ham_cfg))
+    with mlflow.start_run(run_name=f"ed_g{ham_cfg.get('g', 0.0)}"):
+        mlflow.log_params(_mlflow_common_params(config))
+        mlflow.log_param("experiment_dir", str(experiment_dir))
+
+        E0, psi0 = run_and_save(
+            experiment_dir=experiment_dir,
+            geometry=ham_cfg.geometry, J1=ham_cfg.get("J1", 1.0), g=ham_cfg.get("g", 0.0),
+            pbc=ham_cfg.get("pbc", True),
+            L=ham_cfg.get("L"), Lx=ham_cfg.get("Lx"), Ly=ham_cfg.get("Ly"),
+            config=task_config_dict,
+        )
+
+        geometry = ham_cfg.geometry
+        N = ham_cfg.get("L") if geometry == "chain" else ham_cfg.Lx * ham_cfg.Ly
+        mlflow.log_metrics({
+            "energy": E0,
+            "energy_per_site": E0 / N,
+        })
+
     logger.info(f"ED done: E0 = {E0:.8f}, E0/N = {E0/N:.8f}")
     return {"energy": E0, "experiment_dir": str(experiment_dir)}
 
 
-def _run_dmrg(config: dict) -> dict:
+def _run_dmrg(config: DictConfig) -> dict:
     """Run DMRG."""
     from src.numerical_solvers.dmrg.solver import run_and_save
 
-    ham_cfg = config["hamiltonian"]
-    sol_cfg = config["solution"]
-    hid = _ham_id(ham_cfg)
-    experiment_dir = create_experiment_dir(OUTPUTS_DIR, hamiltonian=hid, method="dmrg")
+    ham_cfg = config.hamiltonian
+    sol_cfg = config.solution
+    experiment_dir = create_experiment_dir(OUTPUTS_DIR, method="dmrg")
     logger.info(f"Running DMRG → {experiment_dir}")
 
-    results = run_and_save(
-        experiment_dir=experiment_dir,
-        geometry=ham_cfg["geometry"], J1=ham_cfg.get("J1", 1.0), g=ham_cfg.get("g", 0.0),
-        pbc=ham_cfg.get("pbc", True),
-        L=ham_cfg.get("L"), Lx=ham_cfg.get("Lx"), Ly=ham_cfg.get("Ly"),
-        chi_max=sol_cfg.get("chi_max", 256),
-        n_sweeps=sol_cfg.get("n_sweeps", 20),
-    )
-    E0 = results["energy"]
-    geometry = ham_cfg["geometry"]
-    N = ham_cfg.get("L") if geometry == "chain" else ham_cfg["Lx"] * ham_cfg["Ly"]
+    task_config_dict = OmegaConf.to_container(config, resolve=True)
+
+    mlflow.set_experiment(_mlflow_experiment_name(ham_cfg))
+    with mlflow.start_run(run_name=f"dmrg_g{ham_cfg.get('g', 0.0)}"):
+        mlflow.log_params({
+            **_mlflow_common_params(config),
+            "chi_max": sol_cfg.get("chi_max", 256),
+            "n_sweeps": sol_cfg.get("n_sweeps", 20),
+        })
+        mlflow.log_param("experiment_dir", str(experiment_dir))
+
+        results = run_and_save(
+            experiment_dir=experiment_dir,
+            geometry=ham_cfg.geometry, J1=ham_cfg.get("J1", 1.0), g=ham_cfg.get("g", 0.0),
+            pbc=ham_cfg.get("pbc", True),
+            L=ham_cfg.get("L"), Lx=ham_cfg.get("Lx"), Ly=ham_cfg.get("Ly"),
+            chi_max=sol_cfg.get("chi_max", 256),
+            n_sweeps=sol_cfg.get("n_sweeps", 20),
+            config=task_config_dict,
+        )
+
+        E0 = results["energy"]
+        geometry = ham_cfg.geometry
+        N = ham_cfg.get("L") if geometry == "chain" else ham_cfg.Lx * ham_cfg.Ly
+        mlflow.log_metrics({
+            "energy": E0,
+            "energy_per_site": E0 / N,
+        })
+
     logger.info(f"DMRG done: E0 = {E0:.8f}, E0/N = {E0/N:.8f}")
     return {"energy": E0, "experiment_dir": str(experiment_dir)}
 
 
-def _run_vmc(config: dict) -> dict:
+def _run_vmc(config: DictConfig) -> dict:
     """Run VMC training for a single NQS model."""
-    import mlflow
     from src.models.training.vmc_runner import VMCConfig, train
     from src.models.training.sr_optimizer import SRConfig
 
-    sol_cfg = config["solution"]
-    ham_cfg = config["hamiltonian"]
-    train_cfg = config["training"]
+    sol_cfg = config.solution
+    ham_cfg = config.hamiltonian
+    train_cfg = config.training
 
-    sol_name = sol_cfg["name"]
-    hilbert, H, hid, N = _build_hamiltonian(ham_cfg)
+    sol_name = sol_cfg.name
+    sol_type = sol_cfg.type
+    hilbert, H, graph, hid, N = _build_hamiltonian(ham_cfg)
     E_exact = _get_ed_reference(ham_cfg)
 
-    experiment_dir = create_experiment_dir(OUTPUTS_DIR, hamiltonian=hid, method=sol_name)
+    experiment_dir = create_experiment_dir(OUTPUTS_DIR, method=sol_name)
     logger.info(f"Running VMC: {sol_name} on {hid} → {experiment_dir}")
 
     model = _build_model(sol_cfg)
+
+    # Auto-detect holomorphic: RBM has complex params, everything else is real
+    sr_cfg = train_cfg.get("sr", {})
+    is_holomorphic = sr_cfg.get("holomorphic", sol_type == "rbm")
+
     vmc_config = VMCConfig(
-        n_steps=train_cfg.get("n_steps", 500),
-        learning_rate=train_cfg.get("learning_rate", 0.01),
-        n_samples=train_cfg.get("n_samples", 1024),
-        sr=SRConfig(diag_shift=train_cfg.get("diag_shift", 0.01)),
+        n_steps=train_cfg.n_steps,
+        learning_rate=train_cfg.learning_rate,
+        n_samples=train_cfg.n_samples,
+        n_chains=train_cfg.get("n_chains", 1),
+        n_discard_per_chain=train_cfg.get("n_discard_per_chain", 16),
+        d_max=train_cfg.get("d_max", 1),
+        sr=SRConfig(
+            diag_shift=sr_cfg.get("diag_shift", 0.01),
+            holomorphic=is_holomorphic,
+        ),
+        log_every=train_cfg.get("log_every", 10),
+        checkpoint_every=train_cfg.get("checkpoint_every", 100),
+        early_stop_variance=train_cfg.get("early_stop_variance", 1e-6),
+        early_stop_patience=train_cfg.get("early_stop_patience", 50),
+        early_stop_min_steps=train_cfg.get("early_stop_min_steps", 100),
     )
 
-    mlflow.set_experiment(f"vmc_{hid}")
+    # Convert DictConfig to plain dict for saving in results.json
+    task_config_dict = OmegaConf.to_container(config, resolve=True)
+
+    mlflow.set_experiment(_mlflow_experiment_name(ham_cfg))
     with mlflow.start_run(run_name=f"{sol_name}_g{ham_cfg.get('g', 0.0)}"):
         mlflow.log_params({
-            "solution": sol_name, "g": ham_cfg.get("g", 0.0),
-            "geometry": ham_cfg["geometry"], "N": N,
+            **_mlflow_common_params(config),
+            "n_steps": vmc_config.n_steps,
+            "learning_rate": vmc_config.learning_rate,
+            "n_samples": vmc_config.n_samples,
         })
-        results = train(model, hilbert, H, experiment_dir, vmc_config, E_exact)
+        mlflow.log_param("experiment_dir", str(experiment_dir))
+
+        results = train(model, hilbert, H, experiment_dir, vmc_config, E_exact,
+                        resume_experiment_dir=OmegaConf.to_container(config, resolve=True).get("resume_experiment_dir"),
+                        graph=graph,
+                        full_config=task_config_dict)
+
         mlflow.log_metrics({
-            "final_energy": results["energy"],
-            "final_variance": results["variance"],
+            "energy": results["energy"],
+            "variance": results["variance"],
+            "energy_per_site": results["energy"] / N,
             "n_params": results["n_params"],
         })
         if results["relative_error"] is not None:

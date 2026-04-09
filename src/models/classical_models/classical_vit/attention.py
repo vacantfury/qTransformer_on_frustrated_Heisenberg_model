@@ -27,36 +27,47 @@ class MultiHeadAttention(nn.Module):
     def __call__(self, x: jnp.ndarray) -> jnp.ndarray:
         """
         Args:
-            x: Input tensor, shape (n_tokens, d_model).
+            x: Input tensor, shape (..., n_tokens, d_model).
 
         Returns:
-            Output tensor, same shape (n_tokens, d_model).
+            Output tensor, same shape (..., n_tokens, d_model).
         """
-        n_tokens, d = x.shape
+        n_tokens = x.shape[-2]
         d_k = self.d_model // self.n_heads
 
-        # Project to Q, K, V
+        # Project to Q, K, V — Dense broadcasts over leading dims
         Q = nn.Dense(self.d_model, dtype=self.dtype, name="query")(x)
         K = nn.Dense(self.d_model, dtype=self.dtype, name="key")(x)
         V = nn.Dense(self.d_model, dtype=self.dtype, name="value")(x)
 
-        # Reshape for multi-head: (n_tokens, d_model) → (n_heads, n_tokens, d_k)
-        Q = Q.reshape(n_tokens, self.n_heads, d_k).transpose(1, 0, 2)
-        K = K.reshape(n_tokens, self.n_heads, d_k).transpose(1, 0, 2)
-        V = V.reshape(n_tokens, self.n_heads, d_k).transpose(1, 0, 2)
+        # Reshape: (..., n_tokens, d_model) → (..., n_tokens, n_heads, d_k)
+        new_shape = x.shape[:-1] + (self.n_heads, d_k)
+        Q = Q.reshape(new_shape)
+        K = K.reshape(new_shape)
+        V = V.reshape(new_shape)
+
+        # Move heads before tokens: (..., n_heads, n_tokens, d_k)
+        head_axis = len(x.shape) - 1  # the n_heads axis after reshape
+        perm = list(range(len(new_shape)))
+        perm[head_axis - 1], perm[head_axis] = perm[head_axis], perm[head_axis - 1]
+        Q = Q.transpose(perm)
+        K = K.transpose(perm)
+        V = V.transpose(perm)
 
         # Scaled dot-product attention
         scale = jnp.sqrt(jnp.array(d_k, dtype=self.dtype))
-        attn_weights = jnp.matmul(Q, K.transpose(0, 2, 1)) / scale  # (n_heads, n_tokens, n_tokens)
+        attn_weights = jnp.matmul(Q, jnp.swapaxes(K, -2, -1)) / scale
         attn_weights = nn.softmax(attn_weights.real, axis=-1).astype(self.dtype)
 
-        # Apply attention to values
-        out = jnp.matmul(attn_weights, V)  # (n_heads, n_tokens, d_k)
+        # Apply attention
+        out = jnp.matmul(attn_weights, V)  # (..., n_heads, n_tokens, d_k)
 
-        # Concatenate heads
-        out = out.transpose(1, 0, 2).reshape(n_tokens, self.d_model)
+        # Swap heads and tokens back, then concat heads
+        out = out.transpose(perm)  # (..., n_tokens, n_heads, d_k)
+        out = out.reshape(x.shape[:-1] + (self.d_model,))
 
         # Output projection
         out = nn.Dense(self.d_model, dtype=self.dtype, name="output")(out)
 
         return out
+

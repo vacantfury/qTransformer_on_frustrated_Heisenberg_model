@@ -22,5 +22,5 @@ def get_logger(name=DEFAULT_LOGGER_NAME, level=logging.INFO):
         )
         handler.setFormatter(formatter)
         logger.addHandler(handler)
-        logger.propagate = True  # Allow logs to propagate to root for file handlers
+        logger.propagate = False  # Don't duplicate to root logger
     return logger

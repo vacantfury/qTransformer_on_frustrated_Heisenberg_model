@@ -1,10 +1,10 @@
 """
 Main entry point for qTransformer experiments.
 
-CLI follows the PTP pattern:
-    python main.py --batch --experiment <preset>    # run all tasks in preset
-    python main.py --batch --experiment test         # quick test
-    python main.py --batch --experiment benchmark    # full sweep
+CLI:
+    python main.py <experiment>           # run experiment preset
+    python main.py test                   # quick test
+    python main.py baseline --dry-run     # print resolved tasks and exit
 
 For SLURM: sbatch scripts/run_experiment.sbatch <preset>
 """
@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 from pathlib import Path
 
 from src.experiment import Experiment, load_preset
@@ -33,18 +34,15 @@ def parse_args():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python main.py --batch --experiment test
-  python main.py --batch --experiment baseline
-  python main.py --batch --experiment benchmark
-  python main.py --batch --experiment test --dry-run
+  python main.py test
+  python main.py baseline
+  python main.py test --dry-run
 
 Available experiments: see conf/experiment/*.yaml""",
     )
 
-    parser.add_argument("--experiment", "-e", required=True,
+    parser.add_argument("experiment",
                         help="Experiment preset name (from conf/experiment/)")
-    parser.add_argument("--batch", action="store_true",
-                        help="Batch mode (no interactive prompts)")
     parser.add_argument("--dry-run", action="store_true",
                         help="Print resolved tasks and exit")
 
@@ -56,6 +54,7 @@ def main():
 
     experiment_data = load_preset(args.experiment, CONF_DIR)
     tasks = experiment_data.get("tasks", [])
+    parallel_jobs = experiment_data.get("parallel_jobs", 1)
 
     logger.info(f"Experiment: {args.experiment} ({len(tasks)} tasks)")
 
@@ -65,7 +64,14 @@ def main():
 
     exp = Experiment(CONF_DIR)
     exp.add_tasks(tasks)
-    exp.run()
+
+    # Pass parallel config to Experiment — it decides whether
+    # to submit SLURM jobs or run sequentially
+    exp.run(
+        parallel_jobs=parallel_jobs,
+        cluster_config=experiment_data.get("cluster"),
+        experiment_name=args.experiment,
+    )
 
 
 if __name__ == "__main__":

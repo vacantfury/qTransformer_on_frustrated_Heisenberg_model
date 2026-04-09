@@ -12,8 +12,10 @@ from typing import Tuple
 
 import numpy as np
 
-from src.evaluation.energy import save_energy_results
-from src.evaluation.entanglement import half_chain_entropy, save_entanglement_results
+from src.evaluation.results import (
+    save_results, build_energy_results, build_entanglement_results,
+)
+from src.evaluation.entanglement import half_chain_entropy
 
 
 def solve(
@@ -73,9 +75,13 @@ def run_and_save(
     L: int | None = None,
     Lx: int | None = None,
     Ly: int | None = None,
+    config: dict | None = None,
 ) -> Tuple[float, np.ndarray]:
     """
-    Run ED, save energy and entanglement results to experiment directory.
+    Run ED, save unified results.json and wavefunction.
+
+    Args:
+        config: Full resolved task config for reproducibility.
 
     Returns:
         (E0, psi0)
@@ -87,25 +93,26 @@ def run_and_save(
 
     N = L if geometry == "chain" else Lx * Ly
 
-    # Save energy
-    save_energy_results(
-        experiment_dir,
-        energy=E0,
-        N_sites=N,
-        extra={"method": "exact_diag", "geometry": geometry, "g": g},
-    )
-
-    # Save entanglement (half-chain bipartition)
+    # Entanglement (half-chain bipartition)
     entropy = half_chain_entropy(psi0, N)
-    save_entanglement_results(
+    partition_A = list(range(N // 2))
+    partition_B = list(range(N // 2, N))
+
+    # Save unified results.json
+    save_results(
         experiment_dir,
-        entropy=entropy,
-        subsystem_sites=list(range(N // 2)),
-        N_sites=N,
+        task_config=config,
+        energy_results=build_energy_results(energy=E0, N_sites=N),
+        entanglement_results=build_entanglement_results(
+            entropy=entropy,
+            subsystem_sites=[partition_A, partition_B],
+            N_sites=N,
+        ),
     )
 
-    # Save wavefunction
+    # Save wavefunction (binary, separate file)
     psi_path = Path(experiment_dir) / "wavefunction.npy"
     np.save(psi_path, psi0)
 
     return E0, psi0
+

@@ -23,12 +23,13 @@ class SRConfig:
         diag_shift: Regularisation added to S diagonal (prevents singularity).
         diag_scale: Multiplicative regularisation of S diagonal.
         holomorphic: Whether the model is holomorphic (complex params, no conjugates).
-                     True for RBM with complex dtype, False for real-param models.
+                     True for RBM with complex dtype.
+                     False for real-param models (quantum circuits, ViTs, CNN).
         solver: Linear solver for S⁻¹ g. Options: "svd", "cholesky", "gmres".
     """
     diag_shift: float = 0.01
     diag_scale: float | None = None
-    holomorphic: bool = True
+    holomorphic: bool = False
     solver: str = "svd"
 
 

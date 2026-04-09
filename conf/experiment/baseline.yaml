@@ -1,10 +1,10 @@
 # ============================================================
-# Classical baselines — all classical solutions on 4×4, g sweep
+# Phase 2: Classical baselines — all classical solutions × g sweep
 # ============================================================
+# Full training on 4×4 square lattice across all frustration ratios.
+#
 # Usage:
-#   python main.py --batch --experiment baseline
-#   sbatch scripts/run_experiment.sbatch baseline
-# ============================================================
+#   python main.py baseline
 
 tasks:
   # --- RBM ---
@@ -27,20 +27,38 @@ tasks:
     g: 0.0
   - solution: cnn_resnet
     hamiltonian: square_4x4
-    g: 0.5
-
-  # --- Classical ViT ---
-  - solution: classical_vit
-    hamiltonian: square_4x4
-    g: 0.0
-  - solution: classical_vit
+    g: 0.3
+  - solution: cnn_resnet
     hamiltonian: square_4x4
     g: 0.5
+  - solution: cnn_resnet
+    hamiltonian: square_4x4
+    g: 0.7
 
-  # --- Simplified ViT ---
+  # --- Simplified ViT (Level 0) ---
   - solution: simplified_vit
     hamiltonian: square_4x4
     g: 0.0
   - solution: simplified_vit
     hamiltonian: square_4x4
+    g: 0.3
+  - solution: simplified_vit
+    hamiltonian: square_4x4
     g: 0.5
+  - solution: simplified_vit
+    hamiltonian: square_4x4
+    g: 0.7
+
+  # --- Classical ViT (Level 1) ---
+  - solution: classical_vit
+    hamiltonian: square_4x4
+    g: 0.0
+  - solution: classical_vit
+    hamiltonian: square_4x4
+    g: 0.3
+  - solution: classical_vit
+    hamiltonian: square_4x4
+    g: 0.5
+  - solution: classical_vit
+    hamiltonian: square_4x4
+    g: 0.7

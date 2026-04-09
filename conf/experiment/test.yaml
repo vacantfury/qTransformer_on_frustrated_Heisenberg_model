@@ -1,9 +1,127 @@
-# Quick test — 2 tasks: ED + fast RBM VMC on 4×4
+# Medium-scale test — validates convergence + frustration behavior
+# chain_10 × 3 g values (0.0, 0.3, 0.5) × all models + ED references
+# 200 steps, 512 samples per VMC task
+# Expected total time: ~1-2 hours with parallel_jobs=6
+parallel_jobs: 6
+
 tasks:
+  # --- ED references (one per g value) ---
   - solution: ed
-    hamiltonian: square_4x4
+    hamiltonian: chain_10
     g: 0.0
+
+  - solution: ed
+    hamiltonian: chain_10
+    g: 0.3
+
+  - solution: ed
+    hamiltonian: chain_10
+    g: 0.5
+
+  # --- g = 0.0 (no frustration, baseline) ---
   - solution: rbm
-    hamiltonian: square_4x4
+    hamiltonian: chain_10
     g: 0.0
-    training: fast
+    training: medium
+
+  - solution: cnn_resnet
+    hamiltonian: chain_10
+    g: 0.0
+    training: medium
+
+  - solution: simplified_vit
+    hamiltonian: chain_10
+    g: 0.0
+    training: medium
+
+  - solution: classical_vit
+    hamiltonian: chain_10
+    g: 0.0
+    training: medium
+
+  - solution: qsann
+    hamiltonian: chain_10
+    g: 0.0
+    training: medium
+
+  - solution: qmsan_pure
+    hamiltonian: chain_10
+    g: 0.0
+    training: medium
+
+  - solution: qmsan_mixed
+    hamiltonian: chain_10
+    g: 0.0
+    training: medium
+
+  # --- g = 0.3 (moderate frustration) ---
+  - solution: rbm
+    hamiltonian: chain_10
+    g: 0.3
+    training: medium
+
+  - solution: cnn_resnet
+    hamiltonian: chain_10
+    g: 0.3
+    training: medium
+
+  - solution: simplified_vit
+    hamiltonian: chain_10
+    g: 0.3
+    training: medium
+
+  - solution: classical_vit
+    hamiltonian: chain_10
+    g: 0.3
+    training: medium
+
+  - solution: qsann
+    hamiltonian: chain_10
+    g: 0.3
+    training: medium
+
+  - solution: qmsan_pure
+    hamiltonian: chain_10
+    g: 0.3
+    training: medium
+
+  - solution: qmsan_mixed
+    hamiltonian: chain_10
+    g: 0.3
+    training: medium
+
+  # --- g = 0.5 (strong frustration, near critical point) ---
+  - solution: rbm
+    hamiltonian: chain_10
+    g: 0.5
+    training: medium
+
+  - solution: cnn_resnet
+    hamiltonian: chain_10
+    g: 0.5
+    training: medium
+
+  - solution: simplified_vit
+    hamiltonian: chain_10
+    g: 0.5
+    training: medium
+
+  - solution: classical_vit
+    hamiltonian: chain_10
+    g: 0.5
+    training: medium
+
+  - solution: qsann
+    hamiltonian: chain_10
+    g: 0.5
+    training: medium
+
+  - solution: qmsan_pure
+    hamiltonian: chain_10
+    g: 0.5
+    training: medium
+
+  - solution: qmsan_mixed
+    hamiltonian: chain_10
+    g: 0.5
+    training: medium

@@ -1,0 +1,46 @@
+# ============================================================
+# Phase 4: Scaling study — best models on 6×6
+# ============================================================
+# Test if advantages persist at larger system size.
+# Only run after Phase 2+3 identify the best models.
+# Uses production training config.
+#
+# Usage:
+#   python main.py scaling
+
+tasks:
+  # DMRG reference
+  - solution: dmrg
+    hamiltonian: square_6x6
+    g: 0.0
+  - solution: dmrg
+    hamiltonian: square_6x6
+    g: 0.5
+
+  # Best classical (update after Phase 2)
+  - solution: classical_vit
+    hamiltonian: square_6x6
+    g: 0.0
+    training: production
+  - solution: classical_vit
+    hamiltonian: square_6x6
+    g: 0.5
+    training: production
+
+  # Quantum models
+  - solution: qsann
+    hamiltonian: square_6x6
+    g: 0.0
+    training: quantum
+  - solution: qsann
+    hamiltonian: square_6x6
+    g: 0.5
+    training: quantum
+  - solution: qmsan_pure
+    hamiltonian: square_6x6
+    g: 0.0
+    training: quantum
+  - solution: qmsan_pure
+    hamiltonian: square_6x6
+    g: 0.5
+    training: quantum

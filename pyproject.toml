@@ -1,6 +1,7 @@
 [project]
 name = "qtransformer-on-frustrated-heisenberg-model"
 version = "0.1.0"
+package-mode = false
 description = "Quantum Attention Mechanisms as Variational Wavefunction Ansätze for the 2D Frustrated Heisenberg Model"
 authors = [
     {name = "Haoyu Zhang", email = "zhang.haoyu6@northeastern.edu"}

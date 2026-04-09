@@ -1,0 +1,41 @@
+# ============================================================
+# Phase 1: Pipeline validation — all models on small system
+# ============================================================
+# Quick sanity check that every model runs end-to-end.
+# Uses chain_10 with fast training (50 steps).
+#
+# Usage:
+#   python main.py validation
+
+tasks:
+  - solution: ed
+    hamiltonian: chain_10
+    g: 0.0
+  - solution: rbm
+    hamiltonian: chain_10
+    g: 0.0
+    training: fast
+  - solution: cnn_resnet
+    hamiltonian: chain_10
+    g: 0.0
+    training: fast
+  - solution: simplified_vit
+    hamiltonian: chain_10
+    g: 0.0
+    training: fast
+  - solution: classical_vit
+    hamiltonian: chain_10
+    g: 0.0
+    training: fast
+  - solution: qsann
+    hamiltonian: chain_10
+    g: 0.0
+    training: fast
+  - solution: qmsan_pure
+    hamiltonian: chain_10
+    g: 0.0
+    training: fast
+  - solution: qmsan_mixed
+    hamiltonian: chain_10
+    g: 0.0
+    training: fast

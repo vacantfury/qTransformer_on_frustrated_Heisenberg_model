@@ -1,0 +1,11 @@
+# QMSAN mixed-state (fully quantum — mixed-state swap-test attention)
+# Level 3b: similarity computed on reduced density matrices via partial trace
+# Mixed-state overlap: Tr(ρ_q ρ_k) where ρ = Tr_traced(|ψ⟩⟨ψ|)
+# This is the original QMSAN paper approach (Chen et al. 2025)
+name: qmsan_mixed
+type: qmsan
+n_qubits_per_token: 4
+n_pqc_layers: 2
+d_ff: 64
+is_mixed_state: true
+n_keep_qubits: 2  # Keep 2, trace out 2 (of 4 total)

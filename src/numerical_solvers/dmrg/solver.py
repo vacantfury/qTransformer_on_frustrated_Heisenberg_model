@@ -12,7 +12,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Dict, Any
 
-from src.evaluation.energy import save_energy_results
+from src.evaluation.results import save_results, build_energy_results
 
 
 def solve(
@@ -101,8 +101,9 @@ def run_and_save(
     chi_max: int = 256,
     n_sweeps: int = 20,
     mixer: bool = True,
+    config: dict | None = None,
 ) -> Dict[str, Any]:
-    """Run DMRG and save results to experiment directory."""
+    """Run DMRG and save unified results.json."""
     results = solve(
         geometry=geometry, J1=J1, g=g, pbc=pbc,
         L=L, Lx=Lx, Ly=Ly,
@@ -111,17 +112,10 @@ def run_and_save(
 
     N = L if geometry == "chain" else Lx * Ly
 
-    save_energy_results(
+    save_results(
         experiment_dir,
-        energy=results["energy"],
-        N_sites=N,
-        extra={
-            "method": "dmrg",
-            "geometry": geometry,
-            "g": g,
-            "chi_max": chi_max,
-            "n_sweeps": n_sweeps,
-        },
+        task_config=config,
+        energy_results=build_energy_results(energy=results["energy"], N_sites=N),
     )
 
     return results

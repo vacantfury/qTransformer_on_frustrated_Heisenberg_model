@@ -1,11 +1,12 @@
 """
 QMSAN attention mechanism.
 
-Mixed-State Quantum Self-Attention via swap test:
-1. Encode each token via PQC → quantum Q/K states
-2. Compute pairwise similarity via swap test: |⟨q_i|k_j⟩|²
-3. Normalise to attention weights
-4. Apply to quantum-computed values
+Two modes controlled by `is_mixed_state`:
+  - False (default): Pure-state swap test → |⟨ψ_q|ψ_k⟩|²
+    Similarity computed on full pure states in 2^n-dim Hilbert space.
+  - True: Mixed-state swap test → Tr(ρ_q ρ_k)
+    Partial trace reduces states to density matrices on n_keep qubits.
+    This is the original QMSAN approach (Chen et al. 2025).
 
 Level 3 (fully quantum): similarity computed entirely in Hilbert space.
 """
@@ -17,6 +18,7 @@ import flax.linen as nn
 
 from src.models.quantum_models.qmsan.circuits import (
     swap_test_circuit,
+    mixed_state_swap_test_circuit,
     mixed_state_value_circuit,
 )
 
@@ -25,15 +27,27 @@ class SwapTestAttention(nn.Module):
     """
     Swap-test based quantum attention.
 
-    Attention coefficient α_{ij} = softmax_j(|⟨q_i|k_j⟩|²)
-    where |⟨q_i|k_j⟩|² is estimated via the swap test circuit.
+    Pure-state mode (is_mixed_state=False):
+        α_{ij} = softmax_j(|⟨ψ_qi|ψ_kj⟩|²)
+        Similarity is the fidelity of full pure states.
+
+    Mixed-state mode (is_mixed_state=True):
+        α_{ij} = softmax_j(Tr(ρ_qi ρ_kj))
+        States are reduced via partial trace to n_keep qubits.
+        Follows the original QMSAN paper (Chen et al. 2025).
 
     Args:
         n_qubits_per_token: Qubits per attention token.
         n_pqc_layers: Depth of Q/K/V circuits.
+        is_mixed_state: If True, use mixed-state swap test with partial trace.
+        n_keep_qubits: Number of qubits to keep (rest traced out).
+                       Only used when is_mixed_state=True.
+                       Defaults to n_qubits_per_token // 2.
     """
     n_qubits_per_token: int = 4
     n_pqc_layers: int = 2
+    is_mixed_state: bool = False
+    n_keep_qubits: int | None = None
 
     @nn.compact
     def __call__(self, x_tokens: jnp.ndarray) -> jnp.ndarray:
@@ -55,16 +69,19 @@ class SwapTestAttention(nn.Module):
         params_v = self.param("params_v", nn.initializers.normal(0.1),
                               (nl, nq, 2))
 
-        # Build circuits
-        swap_circuit = swap_test_circuit(nq)
+        # Build swap test circuit based on mode
+        if self.is_mixed_state:
+            n_keep = self.n_keep_qubits if self.n_keep_qubits is not None else nq // 2
+            swap_circuit = mixed_state_swap_test_circuit(nq, n_keep)
+        else:
+            swap_circuit = swap_test_circuit(nq)
+
         val_circuit = mixed_state_value_circuit(nq)
 
         # Compute swap-test overlap for all (i, j) pairs
         def compute_overlap(x_q, x_k):
-            """⟨ancilla Z⟩ → |⟨ψ|φ⟩|² = 2*P(0) - 1"""
-            z_expval = swap_circuit(x_q, x_k, params_q, params_k, nl)
-            overlap = z_expval  # Already in [-1, 1], proportional to |⟨ψ|φ⟩|²
-            return overlap
+            """Compute similarity via swap test."""
+            return swap_circuit(x_q, x_k, params_q, params_k, nl)
 
         # Build attention matrix: (n_tokens, n_tokens)
         def row_overlaps(x_q):

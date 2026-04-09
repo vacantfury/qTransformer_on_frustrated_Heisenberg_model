@@ -29,13 +29,22 @@ class PositionOnlyAttention(nn.Module):
 
     @nn.compact
     def __call__(self, x: jnp.ndarray) -> jnp.ndarray:
-        """x: (n_tokens, d_model) → (n_tokens, d_model)"""
-        n_tokens = x.shape[0]
+        """x: (..., n_tokens, d_model) → (..., n_tokens, d_model)"""
+        n_tokens = x.shape[-2]
         d_k = self.d_model // self.n_heads
 
-        # Only V projection — no Q, K
+        # Only V projection — no Q, K. Dense broadcasts over leading dims.
         V = nn.Dense(self.d_model, dtype=self.dtype, name="value")(x)
-        V = V.reshape(n_tokens, self.n_heads, d_k).transpose(1, 0, 2)
+
+        # Reshape: (..., n_tokens, d_model) → (..., n_tokens, n_heads, d_k)
+        new_shape = x.shape[:-1] + (self.n_heads, d_k)
+        V = V.reshape(new_shape)
+
+        # Move heads before tokens: (..., n_heads, n_tokens, d_k)
+        head_axis = len(x.shape) - 1
+        perm = list(range(len(new_shape)))
+        perm[head_axis - 1], perm[head_axis] = perm[head_axis], perm[head_axis - 1]
+        V = V.transpose(perm)
 
         # Learnable positional attention weights (input-independent)
         attn_logits = self.param(
@@ -46,8 +55,11 @@ class PositionOnlyAttention(nn.Module):
         attn_weights = nn.softmax(attn_logits.real, axis=-1).astype(self.dtype)
 
         # Apply fixed attention to values
-        out = jnp.matmul(attn_weights, V)  # (n_heads, n_tokens, d_k)
-        out = out.transpose(1, 0, 2).reshape(n_tokens, self.d_model)
+        out = jnp.matmul(attn_weights, V)  # (..., n_heads, n_tokens, d_k)
+
+        # Swap back and concat heads
+        out = out.transpose(perm)  # (..., n_tokens, n_heads, d_k)
+        out = out.reshape(x.shape[:-1] + (self.d_model,))
 
         out = nn.Dense(self.d_model, dtype=self.dtype, name="output")(out)
         return out
@@ -74,12 +86,12 @@ class SimplifiedViT(BaseModel):
     dtype: type = complex
 
     @nn.compact
-    def __call__(self, x: jnp.ndarray) -> jnp.ndarray:
-        """x ∈ {+1,-1}^N → log ψ(x) ∈ ℂ"""
-        N = x.shape[0]
+    def forward(self, x: jnp.ndarray) -> jnp.ndarray:
+        """x: (batch, N) → (batch, 1)"""
+        N = x.shape[-1]
 
-        # Per-site embedding
-        x = x.reshape(N, 1).astype(self.dtype)
+        # Per-site embedding: (batch, N) → (batch, N, d_model)
+        x = x[..., jnp.newaxis].astype(self.dtype)  # (batch, N, 1)
         x = nn.Dense(self.d_model, dtype=self.dtype, name="site_embed")(x)
 
         # Positional encoding
@@ -88,7 +100,7 @@ class SimplifiedViT(BaseModel):
             nn.initializers.normal(stddev=0.02),
             (N, self.d_model),
         )
-        x = x + pos_embed.astype(self.dtype)
+        x = x + pos_embed.astype(self.dtype)  # broadcasts over batch
 
         # Simplified encoder blocks
         for i in range(self.n_layers):
@@ -112,7 +124,6 @@ class SimplifiedViT(BaseModel):
             x = residual + x
 
         x = nn.LayerNorm(dtype=self.dtype)(x)
-        x = jnp.mean(x, axis=0)
-        log_psi = nn.Dense(1, dtype=self.dtype, name="output")(x)
+        x = jnp.mean(x, axis=-2)  # pool over sites → (batch, d_model)
+        return nn.Dense(1, dtype=self.dtype, name="output")(x)  # (batch, 1)
 
-        return log_psi.squeeze(-1)

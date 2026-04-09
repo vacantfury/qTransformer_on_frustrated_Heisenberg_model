@@ -1,0 +1,9 @@
+# QMSAN pure-state (fully quantum — swap-test attention)
+# Level 3a: similarity computed entirely in Hilbert space
+# Pure-state fidelity: |⟨ψ_q|ψ_k⟩|²
+name: qmsan_pure
+type: qmsan
+n_qubits_per_token: 4
+n_pqc_layers: 2
+d_ff: 64
+is_mixed_state: false

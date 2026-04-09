@@ -1,12 +1,19 @@
 # ============================================================
-# ED ground truth — exact diagonalisation on all small systems
+# Phase 0: ED ground truth — exact diagonalisation
 # ============================================================
 # Usage:
-#   python main.py --batch --experiment ed
-#   sbatch scripts/run_experiment.sbatch ed
-# ============================================================
+#   python main.py ed
 
 tasks:
+  # Chain 10 (validation system)
+  - solution: ed
+    hamiltonian: chain_10
+    g: 0.0
+  - solution: ed
+    hamiltonian: chain_10
+    g: 0.5
+
+  # Square 4x4 (primary benchmark)
   - solution: ed
     hamiltonian: square_4x4
     g: 0.0
@@ -19,6 +26,8 @@ tasks:
   - solution: ed
     hamiltonian: square_4x4
     g: 0.7
+
+  # Chain 20
   - solution: ed
     hamiltonian: chain_20
     g: 0.0

@@ -22,17 +22,16 @@ class RBM(BaseModel):
     Args:
         alpha: Hidden unit density (n_hidden = alpha * n_visible).
         use_visible_bias: Whether to include visible bias terms.
-        dtype: Parameter dtype (complex for complex-valued RBM).
     """
     alpha: int = 1
     use_visible_bias: bool = True
-    dtype: type = complex
 
     @nn.compact
-    def __call__(self, x: jnp.ndarray) -> jnp.ndarray:
-        """x ∈ {+1,-1}^N → log ψ(x) ∈ ℂ"""
+    def forward(self, x: jnp.ndarray) -> jnp.ndarray:
+        """x: (batch, N) → (batch,). nk.models.RBM handles batching natively."""
         return nk.models.RBM(
             alpha=self.alpha,
             use_visible_bias=self.use_visible_bias,
-            dtype=self.dtype,
+            param_dtype=complex,
         )(x)
+

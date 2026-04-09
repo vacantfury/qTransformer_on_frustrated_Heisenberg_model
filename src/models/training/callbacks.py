@@ -7,13 +7,15 @@ logging, checkpointing, early stopping, and evaluation.
 from __future__ import annotations
 
 import json
-import logging
+import time
 from pathlib import Path
 from typing import Any, Dict, List
 
 import numpy as np
 
-logger = logging.getLogger(__name__)
+from src.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class CallbackList:
@@ -50,24 +52,30 @@ class Callback:
 
 
 class EnergyLogger(Callback):
-    """Log energy and variance to a list for later saving."""
+    """Log energy, variance, and wall-clock time per step."""
 
     def __init__(self, log_every: int = 10):
         self.log_every = log_every
         self.steps: list[int] = []
         self.energies: list[float] = []
         self.variances: list[float] = []
+        self.wall_times: list[float] = []   # seconds since training start
+        self._start_time: float | None = None
 
     def on_step(self, step: int, log_data: Dict[str, Any]) -> bool:
+        if self._start_time is None:
+            self._start_time = time.time()
         if step % self.log_every == 0:
             energy = log_data.get("energy", float("nan"))
             variance = log_data.get("variance", float("nan"))
+            elapsed = time.time() - self._start_time
             self.steps.append(step)
             self.energies.append(float(np.real(energy)))
             self.variances.append(float(np.real(variance)))
+            self.wall_times.append(elapsed)
             logger.info(
                 f"Step {step:5d} | E = {np.real(energy):.6f} | "
-                f"Var = {np.real(variance):.6f}"
+                f"Var = {np.real(variance):.6f} | t = {elapsed:.1f}s"
             )
         return False
 
@@ -106,7 +114,7 @@ class EarlyStopping(Callback):
 
 
 class CheckpointSaver(Callback):
-    """Save model parameters periodically."""
+    """Save model parameters periodically as pickle (preserves pytree structure)."""
 
     def __init__(self, experiment_dir: str | Path, save_every: int = 100):
         self.experiment_dir = Path(experiment_dir)
@@ -116,10 +124,39 @@ class CheckpointSaver(Callback):
         if step > 0 and step % self.save_every == 0:
             params = log_data.get("params")
             if params is not None:
-                import jax
+                import pickle
                 ckpt_dir = self.experiment_dir / "checkpoints"
                 ckpt_dir.mkdir(exist_ok=True)
-                path = ckpt_dir / f"params_step{step}.npz"
-                flat_params = jax.tree.leaves(params)
-                np.savez(path, *flat_params)
+                path = ckpt_dir / f"checkpoint_step{step}.pkl"
+                checkpoint = {"step": step, "params": params}
+                with open(path, "wb") as f:
+                    pickle.dump(checkpoint, f, protocol=4)
+                logger.debug(f"Checkpoint saved: step {step} → {path}")
         return False
+
+
+def find_latest_checkpoint(experiment_dir: str | Path) -> dict | None:
+    """
+    Find and load the latest checkpoint from an experiment directory.
+
+    Args:
+        experiment_dir: Path to experiment directory containing checkpoints/.
+
+    Returns:
+        Dict with 'step' and 'params', or None if no checkpoint found.
+    """
+    import pickle
+    ckpt_dir = Path(experiment_dir) / "checkpoints"
+    if not ckpt_dir.exists():
+        return None
+
+    ckpt_files = sorted(ckpt_dir.glob("checkpoint_step*.pkl"))
+    if not ckpt_files:
+        return None
+
+    latest = ckpt_files[-1]
+    with open(latest, "rb") as f:
+        checkpoint = pickle.load(f)
+
+    logger.info(f"Found checkpoint: step {checkpoint['step']} from {latest}")
+    return checkpoint

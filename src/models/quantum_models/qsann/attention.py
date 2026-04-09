@@ -18,6 +18,8 @@ import flax.linen as nn
 import pennylane as qml
 import numpy as np
 
+from src.models.quantum_models.device import get_device, get_diff_method
+
 
 class GaussianProjectedAttention(nn.Module):
     """
@@ -58,10 +60,11 @@ class GaussianProjectedAttention(nn.Module):
         params_v = self.param("params_v", nn.initializers.normal(0.1),
                               (nl, nq, 2))
 
-        dev = qml.device("lightning.qubit", wires=nq)
+        dev = get_device(wires=nq)
+        diff_method = get_diff_method()
         wires = list(range(nq))
 
-        @qml.qnode(dev, interface="jax")
+        @qml.qnode(dev, interface="jax", diff_method=diff_method)
         def qk_circuit(x_in, params):
             from src.models.quantum_models.base_quantum_model import BaseQuantumModel
             BaseQuantumModel.angle_encoding(x_in, wires)

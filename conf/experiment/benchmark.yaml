@@ -1,10 +1,11 @@
 # ============================================================
 # Full benchmark — all solutions × all g values on 4×4
 # ============================================================
+# Combines Phase 2 (baseline) + Phase 3 (quantum) in one batch.
+# WARNING: This is many runs. Consider running phases separately.
+#
 # Usage:
-#   python main.py --batch --experiment benchmark
-#   sbatch scripts/run_experiment.sbatch benchmark
-# ============================================================
+#   python main.py benchmark
 
 tasks:
   # --- g = 0.0 (unfrustrated Heisenberg) ---
@@ -23,9 +24,15 @@ tasks:
   - solution: qsann
     hamiltonian: square_4x4
     g: 0.0
-  - solution: qmsan
+    training: quantum
+  - solution: qmsan_pure
     hamiltonian: square_4x4
     g: 0.0
+    training: quantum
+  - solution: qmsan_mixed
+    hamiltonian: square_4x4
+    g: 0.0
+    training: quantum
 
   # --- g = 0.3 (moderate frustration) ---
   - solution: rbm
@@ -43,9 +50,15 @@ tasks:
   - solution: qsann
     hamiltonian: square_4x4
     g: 0.3
-  - solution: qmsan
+    training: quantum
+  - solution: qmsan_pure
     hamiltonian: square_4x4
     g: 0.3
+    training: quantum
+  - solution: qmsan_mixed
+    hamiltonian: square_4x4
+    g: 0.3
+    training: quantum
 
   # --- g = 0.5 (critical frustration) ---
   - solution: rbm
@@ -63,9 +76,15 @@ tasks:
   - solution: qsann
     hamiltonian: square_4x4
     g: 0.5
-  - solution: qmsan
+    training: quantum
+  - solution: qmsan_pure
     hamiltonian: square_4x4
     g: 0.5
+    training: quantum
+  - solution: qmsan_mixed
+    hamiltonian: square_4x4
+    g: 0.5
+    training: quantum
 
   # --- g = 0.7 (strong frustration) ---
   - solution: rbm
@@ -83,6 +102,12 @@ tasks:
   - solution: qsann
     hamiltonian: square_4x4
     g: 0.7
-  - solution: qmsan
+    training: quantum
+  - solution: qmsan_pure
     hamiltonian: square_4x4
     g: 0.7
+    training: quantum
+  - solution: qmsan_mixed
+    hamiltonian: square_4x4
+    g: 0.7
+    training: quantum

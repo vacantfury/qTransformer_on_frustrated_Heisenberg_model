@@ -1,0 +1,63 @@
+# ============================================================
+# Phase 3: Quantum attention benchmark — QSANN + QMSAN variants
+# ============================================================
+# Core experiment: quantum attention vs classical baselines.
+# Uses quantum training config (more steps, fewer samples).
+#
+# Usage:
+#   python main.py quantum_benchmark
+
+tasks:
+  # --- QSANN (Level 2: partial quantum) ---
+  - solution: qsann
+    hamiltonian: square_4x4
+    g: 0.0
+    training: quantum
+  - solution: qsann
+    hamiltonian: square_4x4
+    g: 0.3
+    training: quantum
+  - solution: qsann
+    hamiltonian: square_4x4
+    g: 0.5
+    training: quantum
+  - solution: qsann
+    hamiltonian: square_4x4
+    g: 0.7
+    training: quantum
+
+  # --- QMSAN pure-state (Level 3a) ---
+  - solution: qmsan_pure
+    hamiltonian: square_4x4
+    g: 0.0
+    training: quantum
+  - solution: qmsan_pure
+    hamiltonian: square_4x4
+    g: 0.3
+    training: quantum
+  - solution: qmsan_pure
+    hamiltonian: square_4x4
+    g: 0.5
+    training: quantum
+  - solution: qmsan_pure
+    hamiltonian: square_4x4
+    g: 0.7
+    training: quantum
+
+  # --- QMSAN mixed-state (Level 3b) ---
+  - solution: qmsan_mixed
+    hamiltonian: square_4x4
+    g: 0.0
+    training: quantum
+  - solution: qmsan_mixed
+    hamiltonian: square_4x4
+    g: 0.3
+    training: quantum
+  - solution: qmsan_mixed
+    hamiltonian: square_4x4
+    g: 0.5
+    training: quantum
+  - solution: qmsan_mixed
+    hamiltonian: square_4x4
+    g: 0.7
+    training: quantum

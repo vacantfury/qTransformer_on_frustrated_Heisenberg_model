@@ -13,6 +13,7 @@ Subclasses only need to implement the attention mechanism.
 from __future__ import annotations
 
 import flax.linen as nn
+import jax
 import jax.numpy as jnp
 import pennylane as qml
 import numpy as np
@@ -63,7 +64,7 @@ class BaseQuantumModel(BaseModel):
     # ──────────────── Quantum Encoding ────────────────
 
     @staticmethod
-    def angle_encoding(x: np.ndarray, wires: list[int]) -> None:
+    def angle_encoding(x, wires: list[int]) -> None:
         """
         Encode spin config into qubit states via RY rotations.
 
@@ -71,19 +72,19 @@ class BaseQuantumModel(BaseModel):
         +1 → |0⟩, -1 → |1⟩ (up to global phase).
         """
         for i, w in enumerate(wires):
-            angle = np.arccos(np.clip(x[i], -1.0, 1.0))
+            angle = jnp.arccos(jnp.clip(x[i], -1.0, 1.0))
             qml.RY(angle, wires=w)
 
     @staticmethod
-    def dense_angle_encoding(x: np.ndarray, wires: list[int]) -> None:
+    def dense_angle_encoding(x, wires: list[int]) -> None:
         """
         Denser encoding using both RY and RZ per qubit.
 
         Each qubit encodes one spin via RY(arccos(s)) · RZ(arcsin(s)).
         """
         for i, w in enumerate(wires):
-            qml.RY(np.arccos(np.clip(x[i], -1.0, 1.0)), wires=w)
-            qml.RZ(np.arcsin(np.clip(x[i], -1.0, 1.0)), wires=w)
+            qml.RY(jnp.arccos(jnp.clip(x[i], -1.0, 1.0)), wires=w)
+            qml.RZ(jnp.arcsin(jnp.clip(x[i], -1.0, 1.0)), wires=w)
 
     # ──────────────── PQC Layers ────────────────
 
@@ -157,8 +158,16 @@ class BaseQuantumModel(BaseModel):
         )
 
     @nn.compact
-    def __call__(self, x: jnp.ndarray) -> jnp.ndarray:
-        """x ∈ {+1,-1}^N → log ψ(x) ∈ ℂ"""
+    def _call_single(self, x: jnp.ndarray) -> jnp.ndarray:
+        """
+        Process a single spin configuration.
+
+        Args:
+            x: (N,) spin config.
+
+        Returns:
+            Scalar log ψ(x).
+        """
         # Tokenise
         tokens = self.tokenise(x, self.n_qubits_per_token)
 
@@ -173,4 +182,29 @@ class BaseQuantumModel(BaseModel):
         h = nn.gelu(h)
         log_psi = nn.Dense(1, dtype=self.dtype)(h)
 
-        return log_psi.squeeze(-1)
+        return log_psi.squeeze(-1)  # scalar
+
+    @nn.compact
+    def __call__(self, x: jnp.ndarray) -> jnp.ndarray:
+        """
+        Override BaseModel.__call__ for quantum models.
+
+        Quantum circuits process single samples only.
+        For batched input (batch, N), we use jax.vmap to map
+        _call_single over the batch dimension.
+
+        This works because default.qubit + backprop uses native JAX
+        operations — all JAX transforms (vmap, jit, jacobian) are
+        fully compatible. No custom JVP issues.
+
+        Args:
+            x: (N,) or (batch, N).
+
+        Returns:
+            scalar for (N,), (batch,) for (batch, N).
+        """
+        if x.ndim == 1:
+            return self._call_single(x)
+        else:
+            return jax.vmap(self._call_single)(x)
+

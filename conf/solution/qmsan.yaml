@@ -1,6 +1,0 @@
-# QMSAN (fully quantum — swap-test attention)
-name: qmsan
-type: qmsan
-n_qubits_per_token: 4
-n_pqc_layers: 2
-d_ff: 64

@@ -1,0 +1,17 @@
+schema: 1 # derived: The declaration.load schema implemented by this package.
+builder: v0.1.0 # derived: The first admitted release; this rollout follows the v0.1.0 milestone.
+project: qtransformer_on_frustrated_heisenberg_model # derived: oikos.projects.qtransformer_on_frustrated_heisenberg_model.path matches checkout (including linked worktrees)
+capabilities: # inferred: checkout and registry evidence
+  - research_code # inferred: A research-kind registration with observable code. Evidence: oikos.projects.qtransformer_on_frustrated_heisenberg_model.kind
+facts:
+  relied_on: # reviewed: a parked research track; no tooling in the repo is called from outside it
+    value: false
+    basis: "parked research code; nothing runs or pins it"
+  trusted_state: # reviewed: results/ and outputs/ are the repo's own experiment artifacts
+    value: false
+    basis: "experiment outputs only; no other project reads its state as truth"
+  effects: [] # reviewed: variational Monte Carlo training code (main.py, src/); no send, cross-repo write or delete; no scheduled job
+validation: # inferred: evidence-supported checks only; adequacy needs review. Empty scaffolding only; absence of declared gaps is not coverage evidence.
+  checks: [] # reviewed: no tests/ directory and no pytest configuration in pyproject.toml
+  gaps:
+    - "no automated tests"

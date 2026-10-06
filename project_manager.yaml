@@ -1,5 +1,5 @@
 schema: 1 # derived: The declaration.load schema implemented by this package.
-builder: v0.1.0 # derived: The first admitted release; this rollout follows the v0.1.0 milestone.
+builder: v0.4.2 # reviewed: moved by project_manager upgrade (project_manager t53 rollout, 2026-10-06).
 project: qtransformer_on_frustrated_heisenberg_model # derived: oikos.projects.qtransformer_on_frustrated_heisenberg_model.path matches checkout (including linked worktrees)
 capabilities: # inferred: checkout and registry evidence
   - research_code # inferred: A research-kind registration with observable code. Evidence: oikos.projects.qtransformer_on_frustrated_heisenberg_model.kind
